@@ -1,0 +1,188 @@
+/*
+*	main.c
+*
+*		Created	on:	March	10,	2014
+*						Author:	MSU	Team	11
+*/
+#include <msp430g2553.h>
+#include <stdio.h>
+#include <math.h>
+void main(void){
+				WDTCTL	=	WDTPW	+	WDTHOLD;	//	stop	watchdog	timer
+				BCSCTL2=0x36;	//ACLK	=	VLO
+				BCSCTL3=0x20;	//	MCLK	=	DCO/8	SMCLK	=	DCO/8
+				P1DIR	=	BIT7+BIT6+	+BIT2;	//output	drogue	chute	on	P1.1	(use	1.6	led	as	well)
+				P1SEL	=	0x00;
+				P1OUT	&=	0x00;	//make	sure	output	to	relays	is	clear
+				ADC10CTL1	=	0x0004;	//use	pin	P1.0	for	input
+				ADC10AE0	=	0x01;	//	enable	pin	a0
+				ADC10CTL0	=	SREF_1+REF2_5V	+	REFON	+	ADC10ON	+	MSC;//	use	reference	of	2.5	V	and	
+turn	on	sampling	with	4cycle	hold
+				_delay_cycles(5);	//	pause
+				ADC10CTL0	|=	ENC	+	ADC10SC;	//enable	adc10
+				int delay;		//delay	variable
+				volatile long voltRange,basevolt,currvolt,prevvolt1,vmax;
+				volatile long drogueDeploy,	mainDeploy;	//variables	for	storing	data
+				volatile long up,down,drogue,mainch;	//	variables	for	loops
+				int cvx,cdr,cmn,ii,jj;	//	number	of	digits	in	heights	and	loop	variables
+				int mxht,drht,mnht;	//heights	to	be	reported
+				char svx[15],sdr[15],smn[15];	//	character	arrays	to	hold	the	heights
+				up=0;	//variable	to	check	if	launched
+				down	=0;	//variable	to	check	if	falling
+				drogue	=0;	//variable	to	check	when	to	deploy	drogue	chute
+				mainch=0;	//	variable	to	check	when	to	deploy	main	chute
+				//	voltage=	(ADC10MEM)*2.5/1023.;		conversion	of	ADC	val	to	voltage
+				basevolt=ADC10MEM;	//base	voltage
+				currvolt=basevolt;	//initialize	value
+				prevvolt1=basevolt;	//last	voltage	seen
+				vmax=basevolt;	//maximum	voltage	(at	peak)
+				drogueDeploy=basevolt;	//initialize	value
+				mainDeploy=basevolt;	//initialize	value
+				voltRange=0;	//initialize	value
+38
+				while(!up){	//loop	to	poll	for	launch
+								currvolt	=	ADC10MEM;	//grab	value	from	ADC
+								if(currvolt	>	(basevolt+25)){up=1;}	//if	greater	than	the	measured	steadystate	error,	say	launched
+				}
+				while(up){	//loop	to	find	peak
+								currvolt	=	ADC10MEM;	//grab	adc	value
+								if(currvolt<(vmax-25)){	//if	definitely	lower	than	the	max
+												up=0;	//now	descending
+												down=1;
+								}
+								else{	//keep	waiting	for	apogee
+												prevvolt1=currvolt;
+												if(prevvolt1>vmax){vmax=prevvolt1;}	//	always	take	the	highest	voltage	
+possible
+								}
+				}
+				voltRange	=vmax-basevolt;	//calculate	range	of	flight
+				while(!drogue){//	look	for	the	specified	height	for	the	drogue	chute
+								currvolt	=	ADC10MEM;
+								//if(currvolt	<	(vmax-30)){	//deploy	drogue	near	apogee
+								if(currvolt	<	(voltRange*.7+basevolt)){	//deploy	drogue	at	70%	of	altitude
+												//output	voltage
+												P1OUT|=BIT7;	//trigger	fuse	1	(and	green	LED	on	BoosterPack
+												drogue	=	1;	//end	the	loop
+												drogueDeploy	=	currvolt;
+								}
+				}
+				while(!mainch){	//	look	for	the	specified	height	for	the	main	chute
+								currvolt	=	ADC10MEM;
+								//if((currvolt	<(voltRange/2+basevolt)	)){	//deploy	at	50%	of	altitude
+							 if((currvolt	<(voltRange*.4+basevolt)	)){	//deploy	at	40%	of	altitude
+												for(delay=0;	delay<8000;	delay++);	//	pause	before	turning	off	fuse	1
+												P1OUT&=~BIT7;	//turn	off	fuse	1
+												P1OUT|=BIT6;	//turn	on	fuse	2
+												mainDeploy=currvolt;
+												mainch	=	1;	//	end	the	loop
+								}
+								for(delay=0;	delay<8000;	delay++);	//pause	before	turning	off	fuse	2
+								P1OUT&=~BIT6;	//turn	off	fuse	2
+				}
+//Convert	ADC	readings	to	altitude	in	feet
+				mxht	=	(long)	(145440.36*(1-pow(	(	((20.77-
+vmax*(2.5/1023))/4.878)+.49475)/4.5282,.190263)));
+drht	=	(long)	(145440.36*(1-pow(	(	((20.77-
+drogueDeploy*(2.5/1023))/4.878)+.49475)/4.5282,.190263)));
+mnht	=	(long)	(145440.36*(1-pow(	(	((20.77-
+mainDeploy*(2.5/1023))/4.878)+.49475)/4.5282,.190263)));
+//Store	the	integer	heights	into	character	arrays	and	find	how	many	digits	are	used				
+cvx	=	snprintf (	svx,15,	"%d",mxht	);
+				cdr	=	snprintf (	sdr,	15,"%d",drht	);
+				cmn	=	snprintf (	smn,15	,"%d",mnht	);
+while(1){	//infinite	loop	to	report	flight	data
+39
+				
+//report	max	height
+P1OUT|=BIT2;
+				for(delay=0;	delay<10000;	delay++);
+				
+P1OUT&=~BIT2;
+				for(delay=0;	delay<25000;	delay++);
+				for(ii=0;ii<(cvx);ii++){
+				 if(svx[ii]!='0'){
+				 for(jj=0;jj<(svx[ii]
+-'0');jj++){
+				 P1OUT|=	BIT2;
+				 				for(delay=0;	delay<20000;	delay++);
+				 				P1OUT&=~BIT2;
+				 				for(delay=0;	delay<12000;	delay++);
+				
+}
+				
+}
+				 else
+{
+				 P1OUT|=BIT2;
+				 for(delay=0;	delay<32000;	delay++);
+				 P1OUT&=~BIT2;
+				
+}
+				 for(delay=0;	delay<15000;	delay++);
+				
+}
+				for(delay=0;	delay<20000;	delay++);
+				//report	drogue	deployment	height
+				P1OUT|=BIT2;
+				for(delay=0;	delay<10000;	delay++);
+				P1OUT&=~BIT2;
+				for(delay=0;	delay<5000;	delay++);
+				P1OUT|=BIT2;
+				for(delay=0;	delay<10000;	delay++);
+				P1OUT&=~BIT2;
+				for(delay=0;	delay<25000;	delay++);
+				for(ii=0;ii<(cdr);ii++){
+				 if(sdr[ii]!='0'){
+				 for(jj=0;jj<(sdr[ii]
+-'0');jj++){
+				 P1OUT|=	BIT2;
+				 				for(delay=0;	delay<20000;	delay++);
+				 				P1OUT&=~BIT2;
+				 				for(delay=0;	delay<12000;	delay++);
+				
+}
+				
+}
+				 else
+{
+				 P1OUT|=	BIT2;
+				 for(delay=0;	delay<32000;	delay++);
+				 P1OUT&=~BIT2;
+				
+}
+				 for(delay=0;	delay<15000;	delay++);
+				
+}
+				//report	main	chute	deployment
+				P1OUT|=	BIT2;
+40
+				for(delay=0;	delay<10000;	delay++);
+				P1OUT&=~BIT2;
+				for(delay=0;	delay<5000;	delay++);
+				P1OUT|=	BIT2;
+				for(delay=0;	delay<10000;	delay++);
+				P1OUT&=~BIT2;
+				for(delay=0;	delay<5000;	delay++);
+				P1OUT|=	BIT2;
+				for(delay=0;	delay<10000;	delay++);
+				P1OUT&=~BIT2;
+				for(delay=0;	delay<25000;	delay++);
+				for(ii=0;ii<(cmn);ii++){
+				 if(smn[ii]!='0'){
+				 for(jj=0;jj<(smn[ii]-'0');jj++){
+				 P1OUT|=	BIT2;
+				 				for(delay=0;	delay<20000;	delay++);
+				 				P1OUT&=~BIT2;
+				 				for(delay=0;	delay<12000;	delay++);
+				 }
+				 }
+				 else{
+				 P1OUT|=	BIT2;
+				 for(delay=0;	delay<32000;	delay++);
+				 P1OUT&=~BIT2;
+				 }
+				 for(delay=0;	delay<15000;	delay++);
+				}
+}
+}
