@@ -38,8 +38,8 @@ turn	on	sampling	with	4cycle	hold
 				vmax=basevolt;	//maximum	voltage	(at	peak)
 				drogueDeploy=basevolt;	//initialize	value
 				mainDeploy=basevolt;	//initialize	value
-				voltRange=0;	//initialize	value
-38
+				voltRange=0;	//initialize	value 38
+        
 				while(!up){	//loop	to	poll	for	launch
 								currvolt	=	ADC10MEM;	//grab	value	from	ADC
 								if(currvolt	>	(basevolt+25)){up=1;}	//if	greater	than	the	measured	steadystate	error,	say	launched
@@ -52,8 +52,7 @@ turn	on	sampling	with	4cycle	hold
 								}
 								else{	//keep	waiting	for	apogee
 												prevvolt1=currvolt;
-												if(prevvolt1>vmax){vmax=prevvolt1;}	//	always	take	the	highest	voltage	
-possible
+												if(prevvolt1>vmax){vmax=prevvolt1;}	//	always	take	the	highest	voltage	possible
 								}
 				}
 				voltRange	=vmax-basevolt;	//calculate	range	of	flight
@@ -91,8 +90,7 @@ mainDeploy*(2.5/1023))/4.878)+.49475)/4.5282,.190263)));
 cvx	=	snprintf (	svx,15,	"%d",mxht	);
 				cdr	=	snprintf (	sdr,	15,"%d",drht	);
 				cmn	=	snprintf (	smn,15	,"%d",mnht	);
-while(1){	//infinite	loop	to	report	flight	data
-39
+while(1){	//infinite	loop	to	report	flight	data 39
 				
 //report	max	height
 P1OUT|=BIT2;
@@ -102,8 +100,7 @@ P1OUT&=~BIT2;
 				for(delay=0;	delay<25000;	delay++);
 				for(ii=0;ii<(cvx);ii++){
 				 if(svx[ii]!='0'){
-				 for(jj=0;jj<(svx[ii]
--'0');jj++){
+				 for(jj=0;jj<(svx[ii]-'0');jj++){
 				 P1OUT|=	BIT2;
 				 				for(delay=0;	delay<20000;	delay++);
 				 				P1OUT&=~BIT2;
@@ -134,8 +131,7 @@ P1OUT&=~BIT2;
 				for(delay=0;	delay<25000;	delay++);
 				for(ii=0;ii<(cdr);ii++){
 				 if(sdr[ii]!='0'){
-				 for(jj=0;jj<(sdr[ii]
--'0');jj++){
+				 for(jj=0;jj<(sdr[ii]-'0');jj++){
 				 P1OUT|=	BIT2;
 				 				for(delay=0;	delay<20000;	delay++);
 				 				P1OUT&=~BIT2;
@@ -155,8 +151,7 @@ P1OUT&=~BIT2;
 				
 }
 				//report	main	chute	deployment
-				P1OUT|=	BIT2;
-40
+				P1OUT|=	BIT2;40
 				for(delay=0;	delay<10000;	delay++);
 				P1OUT&=~BIT2;
 				for(delay=0;	delay<5000;	delay++);
